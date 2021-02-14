@@ -11,8 +11,9 @@ class Card:
 
     def __init__(self):
         global cardsDatabase
-        for i in range(6, 16):
+        for i in range(6, 15):
             self.number = self.number + str(random.randint(0, 9))
+        self.number = self.number + str(self.generateChecksumDigit())
         repeated = False
         for card in cardsDatabase:
             if card.number == self.number:
@@ -51,6 +52,31 @@ class Card:
     def getCardBalance(self):
         return self.balance
 
+    def generateChecksumDigit(self):
+        # originalNumber
+        # drop the last digit
+        tempListNumber = list(self.number)
+        # multiply odd digits by 2
+        for i in range(0, 15, 2):
+            digitToMultiply = int(tempListNumber[i])
+            tempListNumber[i] = str(digitToMultiply * 2)
+        # subtract 9 to numbers over 9
+        for index, digit in enumerate(tempListNumber):
+            if int(digit) > 9:
+                tempListNumber[index] = int(digit) - 9
+        # add all numbers
+        sum = 0
+        for digit in tempListNumber:
+            sum += int(digit)
+        checksumDigit = 0
+        if sum % 10 == 0:
+            return checksumDigit
+        else:
+            temp = 10
+            while temp < sum:
+                temp += 10
+            checksumDigit = temp - sum
+            return checksumDigit
 
 
 def createAnAccount():
