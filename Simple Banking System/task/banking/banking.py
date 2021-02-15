@@ -124,18 +124,85 @@ def logIntoAccount():
 
 
 def loggedMenu(card):
-    print("1. Balance")
-    print("2. Log out")
-    print("0. Exit")
-    option = int(input())
-    if option == 1:
-        print(card.balance)
-    elif option == 2:
-        print("You have successfully logged out!\n")
-        startProgram()
+    while True:
+        print("\n1. Balance")
+        print("2. Add income")
+        print("3. Do transfer")
+        print("4. Close account")
+        print("5. Log out")
+        print("0. Exit")
+        option = int(input())
+        if option == 1:
+            checkBalance(card)
+        elif option == 2:
+            addIncome(card)
+        elif option == 3:
+            doTransfer(card)
+        elif option == 4:
+            closeAccount(card)
+        elif option == 5:
+            logOut()
+        else:
+            exit()
+
+
+def checkBalance(card):
+    print(card.balance)
+
+
+def addIncome(card):
+    print("Enter income:")
+    income = int(input())
+    card.balance += income
+    cur.execute(f"UPDATE card SET balance={card.balance} WHERE number={card.getCardNumber()}")
+    conn.commit()
+    print("Income was added!")
+
+
+def doTransfer(card):
+    print("Enter card number:")
+    receiverCardNumber = input()
+    tempCard = Card(False)
+    tempCard.setCardNumber(receiverCardNumber[:-1])
+    if card.getCardNumber() == receiverCardNumber:
+        print("You can't transfer money to the same account!\n")
+    elif tempCard.generateChecksumDigit() != int(receiverCardNumber[-1]):
+        print("Probably you made a mistake in the card number. Please try again!\n")
     else:
-        print("Bye!\n")
-        sys.exit()
+        cur.execute(f"SELECT * FROM card WHERE number={receiverCardNumber}")
+        if bool(cur.fetchone()) is not False:
+            print("Enter how much money you want to transfer:")
+            moneyToTransfer = input()
+            cur.execute(f"SELECT balance FROM card WHERE number={card.getCardNumber()}")
+            if cur.fetchone() < moneyToTransfer:
+                "Not enough money!\n"
+            else:
+                cur.execute(f"UPDATE card SET balance = {card.balance} - {moneyToTransfer} "
+                            f"WHERE number={card.getCardNumber()}")
+                conn.commit()
+                cur.execute(f"UPDATE card SET balance = {card.balance} + {moneyToTransfer} "
+                            f"WHERE number={receiverCardNumber}")
+                conn.commit()
+                "Success"
+        else:
+            print("Such a card does not exist.\n")
+
+
+def closeAccount(card):
+    cur.execute(f"DELETE FROM card "
+                f"WHERE number={card.getCardNumber()}")
+    conn.commit()
+    print("The account has been closed!\n")
+
+
+def logOut():
+    print("You have successfully logged out!\n")
+    startProgram()
+
+
+def exit():
+    print("Bye!\n")
+    sys.exit()
 
 
 def startProgram():
@@ -148,8 +215,7 @@ def startProgram():
     elif option == 2:
         logIntoAccount()
     else:
-        print("Bye!\n")
-        sys.exit()
+        exit()
 
 
 # ACTUAL PROGRAM START
