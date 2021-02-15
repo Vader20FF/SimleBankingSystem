@@ -1,39 +1,47 @@
 import random
 import sys
+import sqlite3
 
-cardsDatabase = []
-
+conn = sqlite3.connect('card.s3db')
+cur = conn.cursor()
 
 class Card:
+    id = ...
     number = "400000"
     pin = ""
     balance = 0
 
-    def __init__(self):
-        global cardsDatabase
-        for i in range(6, 15):
-            self.number = self.number + str(random.randint(0, 9))
-        self.number = self.number + str(self.generateChecksumDigit())
-        repeated = False
-        for card in cardsDatabase:
-            if card.number == self.number:
-                repeated = True
-                break
-        while repeated:
-            for i in range(6, 16):
-                self.number[i] = random.randint(0, 9)
+    def __init__(self, create):
+        if create:
+            for i in range(6, 15):
+                self.number = self.number + str(random.randint(0, 9))
+            self.number = self.number + str(self.generateChecksumDigit())
             repeated = False
             for card in cardsDatabase:
                 if card.number == self.number:
                     repeated = True
                     break
-        for i in range(0, 4):
-            self.pin = self.pin + str(random.randint(0, 9))
-        print("Your card has been created\n")
-        print("Your card number:")
-        print(self.getCardNumber())
-        print("Your card PIN:")
-        print(self.getCardPIN())
+            while repeated:
+                for i in range(6, 16):
+                    self.number[i] = random.randint(0, 9)
+                repeated = False
+                for card in cardsDatabase:
+                    if card.number == self.number:
+                        repeated = True
+                        break
+            for i in range(0, 4):
+                self.pin = self.pin + str(random.randint(0, 9))
+            biggestID = 0
+            for card in cardsDatabase:
+                if card.id > biggestID:
+                    biggestID = card.id
+            self.id = biggestID
+            print("Your card has been created\n")
+            print("Your card number:")
+            print(self.getCardNumber())
+            print("Your card PIN:")
+            print(self.getCardPIN())
+
 
     def getCardInfo(self):
         print("Your card number:")
@@ -42,6 +50,9 @@ class Card:
         print(self.getCardPIN())
         print("Your card balance:")
         print(self.getCardBalance())
+
+    def getCardID(self):
+        return self.id
 
     def getCardNumber(self):
         return self.number
@@ -65,43 +76,46 @@ class Card:
             if int(digit) > 9:
                 tempListNumber[index] = int(digit) - 9
         # add all numbers
-        sum = 0
+        numbersSum = 0
         for digit in tempListNumber:
-            sum += int(digit)
+            numbersSum += int(digit)
         checksumDigit = 0
-        if sum % 10 == 0:
+        if numbersSum % 10 == 0:
             return checksumDigit
         else:
             temp = 10
-            while temp < sum:
+            while temp < numbersSum:
                 temp += 10
-            checksumDigit = temp - sum
+            checksumDigit = temp - numbersSum
             return checksumDigit
 
 
 def createAnAccount():
-    global cardsDatabase
-    card = Card()
-    cardsDatabase.append(card)
+    card = Card(True)
+    # cur.execute("""INSERT INTO card (number, pin, balance)
+    #                 VALUES ({0}, {1}, {2})
+    #                 ;""".format(card.getCardNumber(), card.getCardPIN(), card.getCardBalance()))
+    cur.execute(f"INSERT INTO card (number, pin, balance) VALUES ({card.getCardNumber()}, {card.getCardPIN()}, "
+                f"{card.getCardBalance()});")
+    conn.commit()
     startProgram()
 
 
 def logIntoAccount():
-    global cardsDatabase
     print("Enter your card number:")
     cardNumber = str(input())
     print("Enter your PIN:")
     pin = str(input())
-    selectedCard = None
-    for card in cardsDatabase:
-        if card.number == cardNumber:
-            if card.pin == pin:
-                selectedCard = card
-                print("You have successfully logged in!\n")
-            else:
-                print("Wrong card number or PIN!\n")
-        else:
-            print("Wrong card number or PIN!\n")
+    cur.execute(f"SELECT * FROM card WHERE number={cardNumber} AND pin={pin}")
+    if bool(cur.fetchone()) is not False:
+        print("You have successfully logged in!\n")
+    else:
+        print("Wrong card number or PIN!\n")
+    selectedCard = Card(False)
+    selectedCard.id = cur.fetchone()[0]
+    selectedCard.number = cur.fetchone()[1]
+    selectedCard.pin = cur.fetchone()[2]
+    selectedCard.balance = cur.fetchone()[3]
     loggedMenu(selectedCard)
 
 
@@ -111,7 +125,7 @@ def loggedMenu(card):
     print("0. Exit")
     option = int(input())
     if option == 1:
-        print(card.getCardBalance())
+        print(card.balance)
     elif option == 2:
         print("You have successfully logged out!\n")
         startProgram()
