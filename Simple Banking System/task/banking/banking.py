@@ -11,37 +11,30 @@ class Card:
     pin = ""
     balance = 0
 
-    def __init__(self, create):
-        if create:
+    def __init__(self, existing):
+        if existing:
             for i in range(6, 15):
                 self.number = self.number + str(random.randint(0, 9))
             self.number = self.number + str(self.generateChecksumDigit())
             repeated = False
-            for card in cardsDatabase:
-                if card.number == self.number:
-                    repeated = True
-                    break
+            cur.execute(f"SELECT * FROM card WHERE number={self.number}")
+            if bool(cur.fetchone()) is True:
+                repeated = True
             while repeated:
                 for i in range(6, 16):
                     self.number[i] = random.randint(0, 9)
                 repeated = False
-                for card in cardsDatabase:
-                    if card.number == self.number:
-                        repeated = True
-                        break
+                cur.execute(f"SELECT * FROM card WHERE number={self.number}")
+                if bool(cur.fetchone()) is True:
+                    repeated = True
             for i in range(0, 4):
                 self.pin = self.pin + str(random.randint(0, 9))
             biggestID = 0
-            for card in cardsDatabase:
-                if card.id > biggestID:
-                    biggestID = card.id
-            self.id = biggestID
             print("Your card has been created\n")
             print("Your card number:")
             print(self.getCardNumber())
             print("Your card PIN:")
             print(self.getCardPIN())
-
 
     def getCardInfo(self):
         print("Your card number:")
@@ -62,6 +55,18 @@ class Card:
 
     def getCardBalance(self):
         return self.balance
+    
+    def setCardID(self, newID):
+        self.id = newID
+        
+    def setCardNumber(self, newCardNumber):
+        self.id = newCardNumber
+        
+    def setCardPIN(self, newCardPIN):
+        self.id = newCardPIN
+        
+    def setCardBalance(self, newCardBalance):
+        self.id = newCardBalance
 
     def generateChecksumDigit(self):
         # originalNumber
@@ -92,9 +97,6 @@ class Card:
 
 def createAnAccount():
     card = Card(True)
-    # cur.execute("""INSERT INTO card (number, pin, balance)
-    #                 VALUES ({0}, {1}, {2})
-    #                 ;""".format(card.getCardNumber(), card.getCardPIN(), card.getCardBalance()))
     cur.execute(f"INSERT INTO card (number, pin, balance) VALUES ({card.getCardNumber()}, {card.getCardPIN()}, "
                 f"{card.getCardBalance()});")
     conn.commit()
@@ -106,17 +108,19 @@ def logIntoAccount():
     cardNumber = str(input())
     print("Enter your PIN:")
     pin = str(input())
+    selectedCard = Card(False)
+    for row in cur.execute(f"SELECT * FROM card WHERE number={cardNumber} AND pin={pin}"):
+        selectedCard.setCardID(row[0])
+        selectedCard.setCardNumber(row[1])
+        selectedCard.setCardPIN(row[2])
+        selectedCard.setCardBalance(row[3])
     cur.execute(f"SELECT * FROM card WHERE number={cardNumber} AND pin={pin}")
     if bool(cur.fetchone()) is not False:
         print("You have successfully logged in!\n")
+        loggedMenu(selectedCard)
     else:
         print("Wrong card number or PIN!\n")
-    selectedCard = Card(False)
-    selectedCard.id = cur.fetchone()[0]
-    selectedCard.number = cur.fetchone()[1]
-    selectedCard.pin = cur.fetchone()[2]
-    selectedCard.balance = cur.fetchone()[3]
-    loggedMenu(selectedCard)
+        startProgram()
 
 
 def loggedMenu(card):
