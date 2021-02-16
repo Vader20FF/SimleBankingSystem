@@ -5,8 +5,9 @@ import sqlite3
 conn = sqlite3.connect('card.s3db')
 cur = conn.cursor()
 
+
 class Card:
-    id = ...
+    id = 0
     number = "400000"
     pin = ""
     balance = 0
@@ -60,13 +61,13 @@ class Card:
         self.id = newID
         
     def setCardNumber(self, newCardNumber):
-        self.id = newCardNumber
+        self.number = newCardNumber
         
     def setCardPIN(self, newCardPIN):
-        self.id = newCardPIN
+        self.pin = newCardPIN
         
     def setCardBalance(self, newCardBalance):
-        self.id = newCardBalance
+        self.balance += newCardBalance
 
     def generateChecksumDigit(self):
         # originalNumber
@@ -147,14 +148,14 @@ def loggedMenu(card):
 
 
 def checkBalance(card):
-    print(card.balance)
+    print(card.getCardBalance())
 
 
 def addIncome(card):
     print("Enter income:")
     income = int(input())
-    card.balance += income
-    cur.execute(f"UPDATE card SET balance={card.balance} WHERE number={card.getCardNumber()}")
+    card.setCardBalance(income)
+    cur.execute(f"UPDATE card SET balance = {card.getCardBalance()} WHERE number={card.getCardNumber()}")
     conn.commit()
     print("Income was added!")
 
@@ -172,18 +173,20 @@ def doTransfer(card):
         cur.execute(f"SELECT * FROM card WHERE number={receiverCardNumber}")
         if bool(cur.fetchone()) is not False:
             print("Enter how much money you want to transfer:")
-            moneyToTransfer = input()
-            cur.execute(f"SELECT balance FROM card WHERE number={card.getCardNumber()}")
-            if cur.fetchone() < moneyToTransfer:
-                "Not enough money!\n"
+            moneyToTransfer = int(input())
+            currentBalance = 0
+            for row in cur.execute(f"SELECT * FROM card WHERE number={card.getCardNumber()}"):
+                currentBalance = row[3]
+            if currentBalance < moneyToTransfer:
+                print("Not Enough Money!\n")
             else:
-                cur.execute(f"UPDATE card SET balance = {card.balance} - {moneyToTransfer} "
+                cur.execute(f"UPDATE card SET balance = balance - {moneyToTransfer} "
                             f"WHERE number={card.getCardNumber()}")
                 conn.commit()
-                cur.execute(f"UPDATE card SET balance = {card.balance} + {moneyToTransfer} "
+                cur.execute(f"UPDATE card SET balance = balance + {moneyToTransfer} "
                             f"WHERE number={receiverCardNumber}")
                 conn.commit()
-                "Success"
+                print("Success")
         else:
             print("Such a card does not exist.\n")
 
@@ -202,6 +205,7 @@ def logOut():
 
 def exit():
     print("Bye!\n")
+    cur.close()
     sys.exit()
 
 
